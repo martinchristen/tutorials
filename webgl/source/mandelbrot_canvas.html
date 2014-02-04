@@ -1,0 +1,72 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <meta name="keywords" content="WebGL">
+   <meta name="author" content="Martin Christen, martin.christen@gmail.com">
+   <script type="text/javascript">
+      //------------------------------------------------------------------------
+      function shader(x,y,color)
+      {
+          xx = 0;
+          yy = 0;
+          maxiteration = 1000;
+          iteration = 0;
+          while ( xx*xx + yy*yy < 4  &&  iteration < maxiteration )
+          {
+              xt = xx*xx - yy*yy + x;
+              yy = 2*xx*yy + y;
+              xx = xt;
+              iteration = iteration + 1;
+          }
+
+         color[0] = (iteration % 20 ) / 20;
+         color[1] = (iteration % 10 ) / 10;
+         color[2] = (iteration % 20 ) / 20;
+         color[3] = 1.0;
+      }
+
+      //------------------------------------------------------------------------
+
+      function main()
+      {
+         var a = new Date();
+         this.canvas = document.getElementById("canvas");
+         this.context = this.canvas.getContext('2d');
+         // get width and height of the canvas
+         var width = this.canvas.width;
+         var height = this.canvas.height;
+         // create a new image
+         var imageData = this.context.createImageData(width, height);
+
+         var pos = 0;
+         var result = [];
+         for (var y = 0; y < height; y++)
+         {
+            for (var x = 0; x < width; x++)
+            {
+               //shader(3.5*(x/(width-1))-2.5, 2.0*(y/(height-1)-0.5), result);
+               shader(2.0*(x/(height-1))-1.5, 2.0*(y/(height-1)-0.5), result);
+               imageData.data[pos++] = result[0]*255;
+               imageData.data[pos++] = result[1]*255;
+               imageData.data[pos++] = result[2]*255;
+               imageData.data[pos++] = 255; // opaque alpha
+            }
+         }
+         this.context.putImageData(imageData, 0, 0); // at coords 0,0
+
+          var b = new Date();
+          var diff = b-a;
+          document.getElementById("resultcanvas").innerHTML = "<div>Time: " + diff + "ms</div>";
+
+      }
+
+   </script>
+</head>
+<body onload="main()">
+<div style="text-align: center">
+   <canvas id="canvas" width="512" height="512"></canvas>
+   <div id="resultcanvas"></div>
+</div>
+</body>
+</html>
+

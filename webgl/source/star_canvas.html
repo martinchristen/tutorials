@@ -1,0 +1,73 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <meta name="keywords" content="WebGL">
+   <meta name="author" content="Martin Christen, martin.christen@gmail.com">
+   <script type="text/javascript">
+      //------------------------------------------------------------------------
+      var POINTS= 6.0;
+      var M_PI = 3.1415926535897932384626433832795;
+      var STARANGLE = (2.0*M_PI / POINTS);
+      var RMAX = 1.0;
+      var RMIN = 0.5;
+      //------------------------------------------------------------------------
+      function mod(x, y) {
+         return x - y * Math.floor(x/y);
+      }
+      //------------------------------------------------------------------------
+      function shader(x,y,color)
+      {
+         var angle = Math.atan2(x,y) + M_PI/2.0;
+         var r = Math.sqrt(x*x + y*y);
+         var a = mod(angle, STARANGLE)/STARANGLE;
+         a = Math.abs(a-0.5); // create a star and not a "shruiken"
+         var d0 = [RMIN*Math.cos(STARANGLE/2.0)-RMAX,
+                   RMIN*Math.sin(STARANGLE/2.0)];
+         var d1 = [r*Math.cos(a)-RMAX,
+                   r*Math.sin(a)];
+         var z = d0[0]*d1[1]-d0[1]*d1[0];
+         if (z <= 0.0) z=0;
+         else z=1.0;
+         color[0] = z;
+         color[1] = Math.min(1.0,z + Math.abs(d1[1]));
+         color[2] = Math.min(1.0,Math.abs(d1[0]));
+         color[3] = 1.0;
+      }
+
+      //------------------------------------------------------------------------
+
+      function main()
+      {
+         this.canvas = document.getElementById("canvas");
+         this.context = this.canvas.getContext('2d');
+         // get width and height of the canvas
+         var width = this.canvas.width;
+         var height = this.canvas.height;
+         // create a new image
+         var imageData = this.context.createImageData(width, height);
+
+         var pos = 0;
+         var result = [];
+         for (var y = 0; y < height; y++)
+         {
+            for (var x = 0; x < width; x++)
+            {
+               shader(2*x/width-1,2*y/height-1, result);
+               imageData.data[pos++] = result[0]*255;
+               imageData.data[pos++] = result[1]*255;
+               imageData.data[pos++] = result[2]*255;
+               imageData.data[pos++] = 255; // opaque alpha
+            }
+         }
+         this.context.putImageData(imageData, 0, 0); // at coords 0,0
+      }
+
+   </script>
+</head>
+<body onload="main()">
+<div style="text-align: center">
+   <canvas id="canvas" width="512" height="512"></canvas>
+</div>
+</body>
+</html>
+

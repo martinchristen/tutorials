@@ -1,0 +1,189 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <meta name="keywords" content="WebGL">
+   <meta name="author" content="Martin Christen, martin.christen@gmail.com">
+   <script id="vertexshader" type="x-shader">
+      attribute vec2 aVertexPosition;
+      varying vec2 pos;
+
+      void main() {
+      gl_Position = vec4(aVertexPosition, 0.0, 1.0);
+      pos = aVertexPosition;
+      }
+   </script>
+   <script id="fragmentshader" type="x-shader">
+      #ifdef GL_ES
+      precision highp float;
+      #endif
+
+      uniform vec4 uColor;
+      uniform float uTime010;
+      varying vec2 pos;
+
+      void main() {
+      float x = 0.5*(pos.x+1.0); // range [0,1]
+      float y = 0.5*(pos.y+1.0); // range [0,1]
+      // checkerboard shader:
+      if ((mod(4.0*x*uTime010, 1.0) < 0.5) ^^ (mod(4.0*y*uTime010, 1.0) < 0.5))
+      {
+      gl_FragColor = uColor;
+      }
+      else
+      {
+      gl_FragColor = vec4(x,1.0,1.0-y,1.0);
+      }
+      }
+   </script>
+   <script type="text/javascript">
+      (function() {
+         var lastTime = 0;
+         var vendors = ['ms', 'moz', 'webkit', 'o'];
+         for(var x = 0; x < vendors.length &&  !window.requestAnimationFrame; ++x){
+            window.requestAnimationFrame = window[vendors[x]+'RequestAnimationFrame'];
+            window.cancelAnimationFrame = window[vendors[x]+'CancelAnimationFrame']
+                    || window[vendors[x]+'CancelRequestAnimationFrame'];
+         }
+
+         if (!window.requestAnimationFrame)
+            window.requestAnimationFrame = function(callback, element) {
+               var currTime = new Date().getTime();
+               var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+               var id = window.setTimeout(function() {
+                  callback(currTime + timeToCall); },timeToCall);
+               lastTime = currTime + timeToCall;
+               return id;
+            };
+
+         if (!window.cancelAnimationFrame)
+            window.cancelAnimationFrame = function(id) {
+               clearTimeout(id);
+            };
+      }());
+
+      var program;
+      var width, height;
+      var gl;
+      var itemSize;
+      var numItems;
+      var vbuffer;
+
+      function initWebGL()
+      {
+         var canvas = document.getElementById("canvas");
+         width = canvas.width;
+         height = canvas.height;
+         var gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+         if (!gl) return null; // can't initialize WebGL
+         return gl;
+      }
+
+
+      function main()
+      {
+         gl = initWebGL();
+
+         // Setup Shaders:
+         var v = document.getElementById("vertexshader").firstChild.nodeValue;
+         var f = document.getElementById("fragmentshader").firstChild.nodeValue;
+
+         var vs = gl.createShader(gl.VERTEX_SHADER);
+         gl.shaderSource(vs, v);
+         gl.compileShader(vs);
+
+         if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS))
+            alert(gl.getShaderInfoLog(vs));
+
+         var fs = gl.createShader(gl.FRAGMENT_SHADER);
+         gl.shaderSource(fs, f);
+         gl.compileShader(fs);
+
+         if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS))
+            alert(gl.getShaderInfoLog(fs));
+
+         program = gl.createProgram();
+         gl.attachShader(program, vs);
+         gl.attachShader(program, fs);
+         gl.linkProgram(program);
+
+
+         if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+            alert(gl.getProgramInfoLog(program));
+
+         // Setup Geometry
+         var vertices = new Float32Array([
+            -1, 1, 1, 1, 1,-1,  // Triangle 1
+            -1, 1, 1,-1,-1,-1   // Triangle 2
+         ]);
+
+         vbuffer = gl.createBuffer();
+         gl.bindBuffer(gl.ARRAY_BUFFER, vbuffer);
+         gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+         itemSize = 2; // we have 2 triangles!
+         numItems = vertices.length / itemSize;
+
+         renderloop();
+      }
+
+      var gtime01 = 0; // Timer running from 0->1
+      var gtime010 = 0; // Timer oscillating from 0<->1
+      var gtime010_flag = 1;
+      function render(time)
+      {
+         gtime01 += time;
+         while (gtime01>1) { gtime01 -= 1;}
+         gtime010 = gtime010 + gtime010_flag*time;
+         if (gtime010>1) { gtime010_flag = -1; gtime010 = 1;}
+         if (gtime010<0) { gtime010_flag = 1; gtime010 = 0;}
+
+         // setup viewport (move this to resize later)
+         gl.viewport(0, 0, width, height);
+
+         // clear framebuffer
+         gl.clearColor(0, 0, 0, 1);
+         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+         // set uniform variables and draw the geometry:
+         gl.bindBuffer(gl.ARRAY_BUFFER, vbuffer);
+         gl.useProgram(program);
+
+         program.uColor = gl.getUniformLocation(program, "uColor");
+         gl.uniform4fv(program.uColor, [0.0, 0.0, 0.0, 1.0]);
+
+         program.uTime = gl.getUniformLocation(program, "uTime010");
+         gl.uniform1f(program.uTime, gtime010);
+
+         program.aVertexPosition = gl.getAttribLocation(program, "aVertexPosition");
+         gl.enableVertexAttribArray(program.aVertexPosition);
+         gl.vertexAttribPointer(program.aVertexPosition, itemSize, gl.FLOAT, false, 0, 0);
+
+         // Draw:
+         gl.drawArrays(gl.TRIANGLES, 0, numItems);
+      }
+
+      var time_t0 = 0;
+      var time_t1 = 0;
+      var framecnt = 0;
+      function renderloop(){
+         time_t0 = new Date().getTime();
+         var time_delta = time_t0-time_t1;
+         if (framecnt == 0) time_delta = 16; // first frame...
+         window.requestAnimationFrame(renderloop);
+         render(time_delta/1000.0);
+         framecnt++;
+         time_t1 = new Date().getTime();
+      };
+
+
+
+
+   </script>
+</head>
+<body onload="main()">
+<div style="text-align: center">
+   <canvas id="canvas" width="512" height="512"></canvas>
+</div>
+</body>
+</html>
+
