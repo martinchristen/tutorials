@@ -1,0 +1,22 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <script type="text/javascript">
+      function init()
+      {
+         var canvas = document.getElementById("canvas");
+         var gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+         if (!gl) return; // can't initialize WebGL
+
+         gl.clearColor(1, 0, 0, 1);
+         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      }
+   </script>
+</head>
+<body onload="init()">
+
+<div style="text-align: center">
+   <canvas id="canvas" width="640" height="480"></canvas>
+</div>
+</body>
+</html>
